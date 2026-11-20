@@ -89,36 +89,64 @@ namespace ZXing.Net.Uno
 		{
 			get
 			{
-				var width = Width;
-				var height = Height;
+				int width  = Width;
+				int height = Height;
 
-				var area = width * height;
-				var matrix = new byte[area];
-				var inputOffset = Top * DataWidth + Left;
+				// Lazily allocate and cache the luminance matrix when first accessed.
+				if (_cachedMatrix == null || _cachedMatrix.Length != width * height)
+				{
+					_cachedMatrix = new byte[width * height];
+					int inputOffset = Top * DataWidth + Left;
 
-				// If the width matches the full width of the underlying data, perform a single copy.
+					// If the width matches the full width of the underlying data, perform a single copy.
+					if (width == DataWidth)
+					{
+						Yuv.Position(inputOffset);
+						_ = Yuv.Get(_cachedMatrix, 0, height * width);
+						return _cachedMatrix;
+					}
+
+					// Otherwise copy one cropped row at a time.
+					int posOffset = inputOffset;
+					for (int y = 0; y < height; y++)
+					{
+						Yuv.Position(posOffset);
+						_ = Yuv.Get(_cachedMatrix, y * width, width);
+						posOffset += DataWidth;
+					}
+					return _cachedMatrix;
+				}
+
+				// Cache exists — re-extract ROI from the original ByteBuffer.
+				int pos = Top * DataWidth + Left;
+
 				if (width == DataWidth)
 				{
-					Yuv.Position(inputOffset);
-					_ = Yuv.Get(matrix, 0, area);
-					return matrix;
+					Yuv.Position(pos);
+					_ = Yuv.Get(_cachedMatrix, 0, height * width);
+					return _cachedMatrix;
 				}
 
-				// Otherwise copy one cropped row at a time.
-				for (var y = 0; y < height; y++)
+				for (int y = 0; y < height; y++)
 				{
-					var outputOffset = y * width;
-					Yuv.Position(inputOffset);
-					_ = Yuv.Get(matrix, outputOffset, width);
-					inputOffset += DataWidth;
+					Yuv.Position(pos);
+					_ = Yuv.Get(_cachedMatrix, y * width, width);
+					pos += DataWidth;
 				}
-				return matrix;
+
+				return _cachedMatrix;
 			}
 		}
 
 		/// <returns> Whether this subclass supports cropping.</returns>
 		override public bool CropSupported
 			=> true;
+
+		/// <summary>Cached byte array for Matrix to avoid re-allocating on every access.
+		/// ZXing may call Matrix multiple times during multi-pass decoding — caching is free since
+		/// the underlying ByteBuffer has not changed between calls.</summary>
+		private byte[] _cachedMatrix;
+
 
 		/// <summary>
 		/// Returns a new object with cropped image data. Implementations may keep a reference to the

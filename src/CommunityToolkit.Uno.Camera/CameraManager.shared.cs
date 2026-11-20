@@ -29,9 +29,63 @@ sealed partial class CameraManager(
     internal bool AnalyseImages { get; } = analyseImages;
 
     private long _videoFrameCounter = 0;
-    public int VidioFrameDivider { get; set; } = 20; // every X frame for analyzing
+
+    /// <summary>
+    /// Resolution dimensions used to calculate the adaptive frame divider.
+    /// Set by platform-specific code when the camera capture is configured.
+    /// </summary>
+    public int CaptureWidth { get; set; }
+    public int CaptureHeight { get; set; }
+
+    /// <summary>
+    /// An optional estimated FPS of the current camera (use -1 if unknown).
+    /// Set by platform-specific code after the camera is connected.
+    /// </summary>
+    public int EstimatedFps { get; set; } = -1;
+
+    /// <summary>
+    /// Legacy frame skip value used when adaptive throttling is disabled.
+    /// </summary>
+    public int VidioFrameDivider { get; set; } = 20;
+
+    /// <summary>
+    /// Enable adaptive frame throttling based on resolution and estimated FPS.
+    /// When false (default is true), falls back to the classic <see cref="VidioFrameDivider"/>
+    /// value set by the caller.
+    /// </summary>
+    public bool EnableAdaptiveThrottling { get; set; } = true;
+
+    /// <summary>
+    /// Gets a calculated divider that adapts to resolution and camera FPS.
+    /// Lower values mean more frames are analyzed, higher values skip more frames.
+    /// </summary>
+    private int AdaptiveDivider => CalculateAdaptiveDivider(EstimatedFps, CaptureWidth, CaptureHeight);
 
     public event EventHandler<CameraFrameBufferEventArgs> FrameReady;
+
+    // ------------------------------------------------------------------
+    // Adaptive Frame Divider algorithm
+    // ------------------------------------------------------------------
+
+    /// <summary>
+    /// Returns a frame divider that adapts to camera FPS and resolution.
+    /// </summary>
+    private static int CalculateAdaptiveDivider(int estimatedFps, int width, int height)
+    {
+        if (width <= 0 || height <= 0) return 20;
+
+        long pixelCount = (long)width * height;
+
+        // High-res cameras (≥ 2 MP — e.g. 1920×1080) are throttled more aggressively.
+        if (pixelCount > 2_000_000)
+            return estimatedFps > 0 ? Math.Max(3, estimatedFps / 15) : 3;
+
+        if (pixelCount > 500_000) // ≥ 0.5 MP — e.g. 800×600
+            return estimatedFps > 0 ? Math.Max(1, estimatedFps / 20) : 1;
+
+        return 1; // Low-res: analyse every frame
+    }
+
 
     /// <summary>
     /// Connects to the camera.

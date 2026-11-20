@@ -3,6 +3,7 @@ using Android.Content.PM;
 using Android.OS;
 using Android.Views;
 using Android.Widget;
+using Uno.UI.Runtime.Android;
 
 namespace ZXing.Net.Uno.Sample.Droid;
 
@@ -11,6 +12,6 @@ namespace ZXing.Net.Uno.Sample.Droid;
     ConfigurationChanges = global::Uno.UI.ActivityHelper.AllConfigChanges,
     WindowSoftInputMode = SoftInput.AdjustNothing | SoftInput.StateHidden
 )]
-public class MainActivity : Microsoft.UI.Xaml.ApplicationActivity
+public class MainActivity : ApplicationActivity
 {
 }

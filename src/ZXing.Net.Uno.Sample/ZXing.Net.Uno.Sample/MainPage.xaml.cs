@@ -13,10 +13,14 @@ public sealed partial class MainPage : Page
         this.InitializeComponent();
         BarcodeReaderControl.Options = new BarcodeReaderOptions
         {
-            Formats = BarcodeFormats.TwoDimensional,
-            TryHarder = true,
-            AutoRotate = true,
-            Multiple = false
+            Formats = BarcodeFormat.QR_CODE,
+            TryHarder = false,
+            AutoRotate = false,
+            Multiple = false,
+            EnableRoI = false,
+            RoIRatio = 0.35f,
+            ShowRoIVisualIndicator = false,
+            DeduplicationPeriod = TimeSpan.FromSeconds(2)
         };
     }
 

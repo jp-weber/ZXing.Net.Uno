@@ -7,26 +7,40 @@
       xmlns:controls="using:CommunityToolkit.Uno.Camera.Controls"
       xmlns:barcodewriter="using:ZXing.Net.Uno.Controls"
       Background="{ThemeResource BackgroundBrush}">
-  <ScrollViewer>
-    <Grid utu:SafeArea.Insets="VisibleBounds">
-      <StackPanel
-        HorizontalAlignment="Center"
-        VerticalAlignment="Center">
-        <TextBlock AutomationProperties.AutomationId="HelloTextBlock"
-          Text="Hello Uno Platform!"
-          HorizontalAlignment="Center" />
-        <TextBlock AutomationProperties.AutomationId="QRTextBlock"
-        Text="{x:Bind ViewModel.QRCodeResult, Mode=OneWay}"
-        HorizontalAlignment="Center" />
-        <controls:CameraBarcodeReaderControl
-            x:Name="BarcodeReaderControl"
-            IsDetecting="{x:Bind ViewModel.IsDetecting, Mode=OneWay}"
-            BarcodesDetected="CameraBarcodeReaderControl_BarcodesDetected"/>
-                <barcodewriter:BarcodeGeneratorControl
-                    Width="200"
-                    Height="200"
-                    Value="www.google.com"/>
-            </StackPanel>
-    </Grid>
-  </ScrollViewer>
+  <Grid utu:SafeArea.Insets="VisibleBounds">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <TextBlock
+      Grid.Row="0"
+      AutomationProperties.AutomationId="HelloTextBlock"
+      Text="Hello Uno Platform!"
+      HorizontalAlignment="Center" />
+    <TextBlock
+      Grid.Row="1"
+      AutomationProperties.AutomationId="QRTextBlock"
+      Text="{x:Bind ViewModel.QRCodeResult, Mode=OneWay}"
+      HorizontalAlignment="Center" />
+    <ContentControl
+      Grid.Row="2"
+      MinHeight="150"
+      HorizontalContentAlignment="Stretch"
+      VerticalContentAlignment="Stretch">
+      <controls:CameraBarcodeReaderControl
+        x:Name="BarcodeReaderControl"
+        HorizontalAlignment="Stretch"
+        VerticalAlignment="Stretch"
+        IsDetecting="{x:Bind ViewModel.IsDetecting, Mode=OneWay}"
+        BarcodesDetected="CameraBarcodeReaderControl_BarcodesDetected" />
+    </ContentControl>
+    <barcodewriter:BarcodeGeneratorControl
+      Grid.Row="3"
+      Width="150"
+      Height="150"
+      HorizontalAlignment="Center"
+      Value="www.google.com" />
+  </Grid>
 </Page>

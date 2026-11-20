@@ -43,6 +43,7 @@ partial class CameraManager
     ResolutionSelector? _resolutionSelector;
     ResolutionFilter? _resolutionFilter;
     OrientationListener? _orientationListener;
+    int _targetRotation = (int)SurfaceOrientation.Rotation0;
     Java.IO.File? _videoRecordingFile;
     TaskCompletionSource? videoRecordingFinalizeTcs;
     Stream? videoRecordingStream;
@@ -116,10 +117,11 @@ partial class CameraManager
     {
         _imageCallback = new ImageCallBack(_cameraView);
         _previewView = new NativePlatformCameraPreviewView(context);
-        if (NativePlatformCameraPreviewView.ScaleType.FitCenter is not null)
+        if (NativePlatformCameraPreviewView.ScaleType.FillCenter is not null)
         {
-            _previewView.SetScaleType(NativePlatformCameraPreviewView.ScaleType.FitCenter);
+            _previewView.SetScaleType(NativePlatformCameraPreviewView.ScaleType.FillCenter);
         }
+        _previewView.SetImplementationMode(NativePlatformCameraPreviewView.ImplementationMode.Compatible);
 
         _cameraExecutor = Executors.NewSingleThreadExecutor() ?? throw new CameraException($"Unable to retrieve {nameof(IExecutorService)}");
         _orientationListener = new OrientationListener(SetImageCaptureTargetRotation, context);
@@ -145,16 +147,17 @@ partial class CameraManager
 
     public async partial ValueTask UpdateCaptureResolution(Size resolution, CancellationToken token)
     {
-        if (_resolutionFilter is not null)
-        {
-            if (Math.Abs(_resolutionFilter.TargetSize.Width - resolution.Width) < double.Epsilon &&
-                Math.Abs(_resolutionFilter.TargetSize.Height - resolution.Height) < double.Epsilon)
-            {
-                return;
-            }
-        }
+        var density = context.Resources?.DisplayMetrics?.Density ?? 1f;
+        var targetSize = new Android.Util.Size(
+            (int)Math.Round(resolution.Width * density),
+            (int)Math.Round(resolution.Height * density));
 
-        var targetSize = new Android.Util.Size((int)resolution.Width, (int)resolution.Height);
+        if (_resolutionFilter is not null &&
+            _resolutionFilter.TargetSize.Width == targetSize.Width &&
+            _resolutionFilter.TargetSize.Height == targetSize.Height)
+        {
+            return;
+        }
 
         if (_resolutionFilter is null)
         {
@@ -220,12 +223,17 @@ partial class CameraManager
         _videoRecorder?.Dispose();
 
         _cameraPreview = new Preview.Builder().SetResolutionSelector(_resolutionSelector)?.Build();
+        if (_cameraPreview is not null)
+        {
+            _cameraPreview.TargetRotation = _targetRotation;
+        }
         _cameraPreview?.SetSurfaceProvider(_cameraExecutor, _previewView?.SurfaceProvider);
 
         _imageCapture = new ImageCapture.Builder()
             .SetCaptureMode(ImageCapture.CaptureModeMaximizeQuality)?
             .SetResolutionSelector(_resolutionSelector)
             ?.Build() ?? throw new InvalidOperationException("Unable to set resolution selector");
+        _imageCapture.TargetRotation = _targetRotation;
 
         // `.SetResolutionFilter()` should never return null
         // According to the Android docs, `ResolutionSelector.Builder.SetResolutionFilter(ResolutionFilter)` returns a `NonNull` object
@@ -259,11 +267,14 @@ partial class CameraManager
 
             _imageAnalyzer.SetAnalyzer(_cameraExecutor, new FrameAnalyzer((buffer, size) =>
             {
-                // analyse only every _vidioFrameDivider value
-                if (_videoFrameCounter % VidioFrameDivider == 0)
+                var divider = EnableAdaptiveThrottling
+                    ? AdaptiveFrameDivider.Calculate(EstimatedFps, (int)size.Width, (int)size.Height)
+                    : VidioFrameDivider;
+
+                if (_videoFrameCounter % divider == 0)
                 {
                     FrameReady?.Invoke(this, new CameraFrameBufferEventArgs(
-                    new ZXing.Net.Uno.Readers.PixelBufferHolder { Data = buffer, Size = size }));
+                        new ZXing.Net.Uno.Readers.PixelBufferHolder { Data = buffer, Size = size }));
                 }
                 _videoFrameCounter++;
             }));
@@ -462,15 +473,22 @@ partial class CameraManager
 
     void SetImageCaptureTargetRotation(int rotation)
     {
+        _targetRotation = rotation switch
+        {
+            >= 45 and < 135 => (int)SurfaceOrientation.Rotation270,
+            >= 135 and < 225 => (int)SurfaceOrientation.Rotation180,
+            >= 225 and < 315 => (int)SurfaceOrientation.Rotation90,
+            _ => (int)SurfaceOrientation.Rotation0
+        };
+
         if (_imageCapture is not null)
         {
-            _imageCapture.TargetRotation = rotation switch
-            {
-                >= 45 and < 135 => (int)SurfaceOrientation.Rotation270,
-                >= 135 and < 225 => (int)SurfaceOrientation.Rotation180,
-                >= 225 and < 315 => (int)SurfaceOrientation.Rotation90,
-                _ => (int)SurfaceOrientation.Rotation0
-            };
+            _imageCapture.TargetRotation = _targetRotation;
+        }
+
+        if (_cameraPreview is not null)
+        {
+            _cameraPreview.TargetRotation = _targetRotation;
         }
     }
 
@@ -537,12 +555,16 @@ partial class CameraManager
 
         public IList<Android.Util.Size> Filter(IList<Android.Util.Size>? supportedSizes, int rotationDegrees)
         {
+            var isRotated = Math.Abs(rotationDegrees % 180) == 90;
             var filteredList = supportedSizes?
-                .Where(size => size.Width <= TargetSize.Width && size.Height <= TargetSize.Height)
-                .OrderByDescending(size => size.Width * size.Height).ToList();
+                .Where(size => isRotated
+                    ? size.Height <= TargetSize.Width && size.Width <= TargetSize.Height
+                    : size.Width <= TargetSize.Width && size.Height <= TargetSize.Height)
+                .OrderByDescending(size => (long)size.Width * size.Height)
+                .ToList();
 
             return filteredList is null || filteredList.Count is 0
-                ? supportedSizes ?? []
+                ? supportedSizes?.OrderByDescending(size => (long)size.Width * size.Height).ToList() ?? []
                 : filteredList;
         }
     }

@@ -7,7 +7,42 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="local:CameraBarcodeReaderControl">
-                    <Grid x:Name="MainGrid" />
+                    <Grid x:Name="MainGrid">
+
+                        <!-- ROI visual overlay — shown when BarcodeReaderOptions.ShowRoIVisualIndicator is true -->
+                        <Canvas
+                            Name="ROIOverlay"
+                            Canvas.ZIndex="1"
+                            Visibility="Collapsed"
+                            IsHitTestVisible="False">
+
+                            <!-- Inner frame that follows camera orientation -->
+                            <Rectangle
+                                x:Name="ROIBorder"
+                                StrokeThickness="2"
+                                RadiusX="8"
+                                RadiusY="8"
+                                Stretch="None"
+                                Fill="Transparent">
+                                <Rectangle.Stroke>
+                                    <SolidColorBrush Color="White"/>
+                                </Rectangle.Stroke>
+                            </Rectangle>
+
+                            <!-- Dark top mask -->
+                            <Rectangle x:Name="ROITopMask" Fill="#50000000" />
+
+                            <!-- Dark bottom mask -->
+                            <Rectangle x:Name="ROIBottomMask" Fill="#50000000" />
+
+                            <!-- Dark left mask -->
+                            <Rectangle x:Name="ROILeftMask" Fill="#50000000" />
+
+                            <!-- Dark right mask -->
+                            <Rectangle x:Name="ROIRightMask" Fill="#50000000" />
+                        </Canvas>
+
+                    </Grid>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>

@@ -29,16 +29,41 @@ public sealed partial class CameraControl : Control, ICameraControl
         base.OnApplyTemplate();
 
         MainGrid = (Grid)GetTemplateChild(MainGridName);
+        MainGrid.SizeChanged -= OnMainGridSizeChanged;
+        MainGrid.SizeChanged += OnMainGridSizeChanged;
         StartCamara();
+    }
+
+    private async void OnMainGridSizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        if (e.NewSize.Width > 0 && e.NewSize.Height > 0 && CameraManager.IsInitialized)
+        {
+            await CameraManager.UpdateCaptureResolution(e.NewSize, CancellationToken.None);
+        }
     }
 
     private async Task StartCamara()
     {
         var previewView = CameraManager.CreatePlatformView();
-        MainGrid.Children.Add(previewView);
+        MainGrid.Children.Insert(0, new ContentControl
+        {
+            Content = previewView,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            VerticalContentAlignment = VerticalAlignment.Stretch
+        });
 
-        await CameraManager.UpdateCaptureResolution(MainGrid.DesiredSize, CancellationToken.None);
+        var initialSize = MainGrid.ActualWidth > 0 && MainGrid.ActualHeight > 0
+            ? new Size(MainGrid.ActualWidth, MainGrid.ActualHeight)
+            : MainGrid.DesiredSize;
+        await CameraManager.UpdateCaptureResolution(initialSize, CancellationToken.None);
         await CameraManager.ConnectCamera(CancellationToken.None);
+
+        if (MainGrid.ActualWidth > 0 && MainGrid.ActualHeight > 0)
+        {
+            await CameraManager.UpdateCaptureResolution(new Size(MainGrid.ActualWidth, MainGrid.ActualHeight), CancellationToken.None);
+        }
     }
 
     /// <summary>

@@ -132,8 +132,12 @@ partial class CameraManager
             return ValueTask.CompletedTask;
         }
 
+        var screenScale = (double)(_previewView?.Window?.Screen?.Scale ?? UIScreen.MainScreen.Scale);
+        var targetResolution = new Size(resolution.Width * screenScale, resolution.Height * screenScale);
+        var isPortrait = GetVideoOrientation() is AVCaptureVideoOrientation.Portrait or AVCaptureVideoOrientation.PortraitUpsideDown;
+
         var formatsMatchingResolution = _cameraView.SelectedCamera.SupportedFormats
-            .Where(format => MatchesResolution(format, resolution))
+            .Where(format => MatchesResolution(format, targetResolution, isPortrait))
             .ToList();
 
         var availableFormats = formatsMatchingResolution.Count is not 0
@@ -554,11 +558,13 @@ partial class CameraManager
         return formats;
     }
 
-    static bool MatchesResolution(AVCaptureDeviceFormat format, Size resolution)
+    static bool MatchesResolution(AVCaptureDeviceFormat format, Size resolution, bool isPortrait)
     {
         var dimensions = ((CMVideoFormatDescription)format.FormatDescription).Dimensions;
-        return dimensions.Width <= resolution.Width
-               && dimensions.Height <= resolution.Height;
+        var width = isPortrait ? dimensions.Height : dimensions.Width;
+        var height = isPortrait ? dimensions.Width : dimensions.Height;
+        return width <= resolution.Width
+               && height <= resolution.Height;
     }
 
     sealed class AVCapturePhotoCaptureDelegateWrapper : AVCapturePhotoCaptureDelegate

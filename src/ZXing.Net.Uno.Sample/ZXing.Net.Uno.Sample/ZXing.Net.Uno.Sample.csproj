@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Uno.Sdk">
   <PropertyGroup>
-      <TargetFrameworks>net10.0-android;net10.0-ios;net10.0-windows10.0.26100.0</TargetFrameworks>
+      <TargetFrameworks>net11.0-android;net11.0-ios;net11.0-windows10.0.26100.0</TargetFrameworks>
 
       <OutputType>Exe</OutputType>
       <UnoSingleProject>true</UnoSingleProject>
@@ -49,12 +49,12 @@
     </UnoFeatures>
     <PackageCertificateThumbprint>D17FB9F254A915E499415F614115D6D86A448B38</PackageCertificateThumbprint>
     <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
-    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">29.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">35.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.19041.0</SupportedOSPlatformVersion>
     <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.19041.0</TargetPlatformMinVersion>
   </PropertyGroup>
 
-    <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)'=='Release|net10.0-android'">
+    <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)'=='Release|net11.0-android'">
         <RunAOTCompilation>true</RunAOTCompilation>
         <AndroidEnableProfiledAot>true</AndroidEnableProfiledAot>
     </PropertyGroup>

@@ -5,7 +5,7 @@ namespace ZXing.Net.Uno.Controls
     [TemplatePart(Name = MainGridName, Type = typeof(Grid))]
     public sealed partial class BarcodeGeneratorControl : Control, IBarcodeGeneratorControl
     {
-        ZXing.Net.Uno.Barcode.BarcodeWriter _barcodeWriter;
+        private readonly ZXing.Net.Uno.Barcode.BarcodeWriter _barcodeWriter = new();
         private const string MainGridName = "MainGrid";
         Grid MainGrid;
         NativePlatformImageView _imageView;
@@ -17,7 +17,6 @@ namespace ZXing.Net.Uno.Controls
         protected override void OnApplyTemplate()
         {
             base.OnApplyTemplate();
-            _barcodeWriter = new Barcode.BarcodeWriter();
             MainGrid = (Grid)GetTemplateChild(MainGridName);
             _imageView = CreatePlatformImage();
             CreateBarcode();
@@ -28,7 +27,7 @@ namespace ZXing.Net.Uno.Controls
 #if IOS || MACCATALYST
 			_imageView ??= new UIKit.UIImageView { BackgroundColor = UIKit.UIColor.Clear };
 #elif ANDROID
-            _imageView = new NativePlatformImageView(Context);
+            _imageView = new NativePlatformImageView(ContextHelper.Current);
             _imageView.SetBackgroundColor(Android.Graphics.Color.Transparent);
 #elif WINDOWS
 			_imageView = new NativePlatformImageView();
@@ -73,10 +72,20 @@ namespace ZXing.Net.Uno.Controls
 
 #if IOS || MACCATALYST
 			    _imageView.Image = image;
-                MainGrid.Children.Add(_imageView);
+                MainGrid.Children.Add(new ContentControl
+                {
+                    Content = _imageView,
+                    HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                    VerticalContentAlignment = VerticalAlignment.Stretch
+                });
 #elif ANDROID
                 _imageView?.SetImageBitmap(image);
-                MainGrid.Children.Add(_imageView);
+                MainGrid.Children.Add(new ContentControl
+                {
+                    Content = _imageView,
+                    HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                    VerticalContentAlignment = VerticalAlignment.Stretch
+                });
 #elif WINDOWS
 			    _imageView.Source = image;
                 MainGrid.Children.Add(_imageView);
